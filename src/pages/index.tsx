@@ -8,8 +8,14 @@ interface PastorInfo {
   state: string;
 }
 
+interface EngagementStats {
+  totalEngagements: number;
+  engagementPerState: Record<string, number>;
+}
+
 export default function Home() {
   const [pastorInfo, setPastorInfo] = useState<PastorInfo | null>(null);
+  const [engagementStats, setEngagementStats] = useState<EngagementStats | null>(null);
   const pastorId = process.env.NEXT_PUBLIC_PASTOR_ID || "1";
 
   useEffect(() => {
@@ -23,17 +29,36 @@ export default function Home() {
       }
     };
 
+    const fetchEngagementStats = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}/engagement-stats`);
+        const data = await response.json();
+        setEngagementStats(data);
+      } catch (error) {
+        console.error('Error fetching engagement stats:', error);
+      }
+    };
+
     fetchPastorInfo();
+    fetchEngagementStats();
   }, [pastorId]);
 
-  if (!pastorInfo) {
+  if (!pastorInfo || !engagementStats) {
     return <div>Loading...</div>;
   }
 
   return (
     <div>
-      <Header name={pastorInfo.name} state={pastorInfo.state} pastorId={pastorInfo.id} />
-      <MapChart originState={pastorInfo.state} pastorId={pastorInfo.id} />
+      <Header
+        name={pastorInfo.name}
+        state={pastorInfo.state}
+        totalEngagements={engagementStats.totalEngagements}
+      />
+      <MapChart
+        originState={pastorInfo.state}
+        pastorId={pastorInfo.id}
+        engagementPerState={engagementStats.engagementPerState}
+      />
     </div>
   );
 }

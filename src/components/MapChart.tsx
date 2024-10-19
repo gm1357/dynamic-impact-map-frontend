@@ -8,11 +8,12 @@ import {
 interface MapChartProps {
   originState: string;
   pastorId: string;
+  engagementPerState: Record<string, number>;
 }
 
-const MapChart: React.FC<MapChartProps> = ({ originState, pastorId }) => {
+const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPerState }) => {
   const [geoData, setGeoData] = useState(null);
-  const [engamentPoints, setEngamentPoints] = useState(null);
+  const [engagementPoints, setEngagementPoints] = useState(null);
 
   useEffect(() => {
     const fetchGeoData = async () => {
@@ -29,7 +30,7 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId }) => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}/impact-map`);
         const data = await response.json();
-        setEngamentPoints(data);
+        setEngagementPoints(data);
       } catch (error) {
         console.error("Error fetching engagement points:", error);
       }
@@ -39,50 +40,56 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId }) => {
     fetchEngagementPoints();
   }, [pastorId]);
 
-  if (!geoData) {
+  if (!geoData || !engagementPoints) {
     return <div>Loading map data...</div>;
   }
 
-  if (engamentPoints) {
-    console.log(engamentPoints);
-  }
   const defaultColor = "#E4E5E6";
   const originStateColor = "#FF9999";
+
+  const getEngagementColor = (stateCode: string) => {
+    const highestEngagement = Object.values(engagementPerState).reduce((max, count) => Math.max(max, count), 0);
+    const engagementCount = engagementPerState[stateCode] || 0;
+    return engagementCount > 0 ? `rgba(169, 208, 245, ${Math.min(Math.max(engagementCount / highestEngagement, 0.2), 1)})` : defaultColor;
+  }
+
   return (
     <ComposableMap projection="geoAlbersUsa">
       <Geographies geography={geoData}>
         {({ geographies }) =>
-          geographies.map((geo) => (
-            <Geography
-              key={geo.rsmKey}
-              geography={geo}
-              style={{
-                default: {
-                  fill: geo.properties.code === originState ? originStateColor : defaultColor,
-                  stroke: "#FFFFFF",
-                  strokeWidth: 0.75,
-                },
-                hover: {
-                  fill: "#A9D0F5",
-                },
-                pressed: {
-                  fill: "#2E64FE",
-                },
-              }}
-            >
-              <text
+          geographies.map((geo) => {
+            const stateCode = geo.properties.code;
+            const fillColor = stateCode === originState ? originStateColor : getEngagementColor(stateCode);
+
+            return (
+              <Geography
+                key={geo.rsmKey}
+                geography={geo}
                 style={{
-                  fontFamily: "sans-serif",
-                  fontSize: "8px",
-                  fill: "#000",
-                  textAnchor: "middle",
-                  alignmentBaseline: "middle",
+                  default: {
+                    fill: fillColor,
+                    stroke: "#FFFFFF",
+                    strokeWidth: 0.75,
+                  },
+                  hover: {
+                    fill: "rgb(169, 208, 245)",
+                  },
                 }}
               >
-                {geo.properties.code}
-              </text>
-            </Geography>
-          ))
+                <text
+                  style={{
+                    fontFamily: "sans-serif",
+                    fontSize: "8px",
+                    fill: "#000",
+                    textAnchor: "middle",
+                    alignmentBaseline: "middle",
+                  }}
+                >
+                  {stateCode}
+                </text>
+              </Geography>
+            );
+          })
         }
       </Geographies>
     </ComposableMap>
