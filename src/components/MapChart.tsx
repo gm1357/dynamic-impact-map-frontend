@@ -3,6 +3,7 @@ import {
   ComposableMap,
   Geographies,
   Geography,
+  Marker,
 } from "react-simple-maps";
 
 interface MapChartProps {
@@ -14,11 +15,12 @@ interface MapChartProps {
 const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPerState }) => {
   const [geoData, setGeoData] = useState(null);
   const [engagementPoints, setEngagementPoints] = useState(null);
+  const [usaStates, setUsaStates] = useState<{ code: string, name: string, longitude: number, latitude: number }[]>([]);
 
   useEffect(() => {
     const fetchGeoData = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/map/us-states`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/map/usa-states/geojson`);
         const data = await response.json();
         setGeoData(data);
       } catch (error) {
@@ -36,11 +38,22 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
       }
     };
 
+    const fetchUsaStates = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/map/usa-states`);
+        const data = await response.json();
+        setUsaStates(data);
+      } catch (error) {
+        console.error("Error fetching usa states:", error);
+      }
+    };
+
     fetchGeoData();
     fetchEngagementPoints();
+    fetchUsaStates();
   }, [pastorId]);
 
-  if (!geoData || !engagementPoints) {
+  if (!geoData || !engagementPoints || !usaStates) {
     return <div>Loading map data...</div>;
   }
 
@@ -76,22 +89,18 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
                   },
                 }}
               >
-                <text
-                  style={{
-                    fontFamily: "sans-serif",
-                    fontSize: "8px",
-                    fill: "#000",
-                    textAnchor: "middle",
-                    alignmentBaseline: "middle",
-                  }}
-                >
-                  {stateCode}
-                </text>
               </Geography>
             );
           })
         }
       </Geographies>
+      {usaStates.map((state) => (
+        <Marker key={state.code} coordinates={[state.longitude, state.latitude]} fill="#777">
+          <text textAnchor="middle" fill="#F53">
+            {state.code}
+          </text>
+        </Marker>
+      ))}
     </ComposableMap>
   );
 };
