@@ -5,6 +5,7 @@ import {
   Geography,
   Marker,
 } from "react-simple-maps";
+import StateTooltip from "./StateTooltip";
 
 interface MapChartProps {
   originState: string;
@@ -16,6 +17,8 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
   const [geoData, setGeoData] = useState(null);
   const [engagementPoints, setEngagementPoints] = useState(null);
   const [usaStates, setUsaStates] = useState<{ code: string, name: string, longitude: number, latitude: number }[]>([]);
+
+  const [hoveredState, setHoveredState] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchGeoData = async () => {
@@ -78,6 +81,8 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
               <Geography
                 key={geo.rsmKey}
                 geography={geo}
+                onMouseEnter={() => setHoveredState(stateCode)}
+                onMouseLeave={() => setHoveredState(null)}
                 style={{
                   default: {
                     fill: fillColor,
@@ -88,19 +93,25 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
                     fill: "rgb(169, 208, 245)",
                   },
                 }}
-              >
-              </Geography>
+              />
             );
           })
         }
       </Geographies>
-      {usaStates.map((state) => (
-        <Marker key={state.code} coordinates={[state.longitude, state.latitude]} fill="#777">
-          <text textAnchor="middle" fill="#F53">
-            {state.code}
-          </text>
+      {hoveredState && usaStates.find(state => state.code === hoveredState) && (
+        <Marker
+          key={hoveredState}
+          coordinates={[
+            usaStates.find(state => state.code === hoveredState)!.longitude,
+            usaStates.find(state => state.code === hoveredState)!.latitude
+          ]}
+        >
+          <StateTooltip
+            stateName={usaStates.find(state => state.code === hoveredState)!.name}
+            engagementCount={engagementPerState[hoveredState] || 0}
+          />
         </Marker>
-      ))}
+      )}
     </ComposableMap>
   );
 };
