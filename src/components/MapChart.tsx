@@ -6,6 +6,7 @@ import {
   Marker,
 } from "react-simple-maps";
 import StateTooltip from "./StateTooltip";
+import OriginMarker from "./OriginMarker";
 
 interface MapChartProps {
   originState: string;
@@ -61,7 +62,6 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
   }
 
   const defaultColor = "#E4E5E6";
-  const originStateColor = "#FF9999";
 
   const getEngagementColor = (stateCode: string) => {
     const highestEngagement = Object.values(engagementPerState).reduce((max, count) => Math.max(max, count), 0);
@@ -69,13 +69,15 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
     return engagementCount > 0 ? `rgba(169, 208, 245, ${Math.min(Math.max(engagementCount / highestEngagement, 0.2), 1)})` : defaultColor;
   }
 
+  const originStateData = usaStates.find(state => state.code === originState);
+
   return (
     <ComposableMap projection="geoAlbersUsa">
       <Geographies geography={geoData}>
         {({ geographies }) =>
           geographies.map((geo) => {
             const stateCode = geo.properties.code;
-            const fillColor = stateCode === originState ? originStateColor : getEngagementColor(stateCode);
+            const fillColor = getEngagementColor(stateCode);
 
             return (
               <Geography
@@ -98,6 +100,13 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
           })
         }
       </Geographies>
+      {originStateData && (
+        <Marker coordinates={[originStateData.longitude, originStateData.latitude]}>
+          <g transform="translate(-20, -58)">
+            <OriginMarker />
+          </g>
+        </Marker>
+      )}
       {hoveredState && usaStates.find(state => state.code === hoveredState) && (
         <Marker
           key={hoveredState}
