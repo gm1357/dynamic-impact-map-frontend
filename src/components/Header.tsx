@@ -1,32 +1,19 @@
 import React, { useState, useEffect } from 'react';
 
-interface PastorInfo {
-  name: string;
-}
-
 interface EngagementStats {
   totalEngagements: number;
 }
 
 interface HeaderProps {
+  name: string;
+  state: string;
   pastorId: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ pastorId }) => {
-  const [pastorInfo, setPastorInfo] = useState<PastorInfo | null>(null);
+const Header: React.FC<HeaderProps> = ({ name, state, pastorId }) => {
   const [engagementStats, setEngagementStats] = useState<EngagementStats | null>(null);
 
   useEffect(() => {
-    const fetchPastorInfo = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}`);
-        const data = await response.json();
-        setPastorInfo(data);
-      } catch (error) {
-        console.error('Error fetching pastor info:', error);
-      }
-    };
-
     const fetchEngagementStats = async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}/engagement-stats`);
@@ -37,18 +24,18 @@ const Header: React.FC<HeaderProps> = ({ pastorId }) => {
       }
     };
 
-    fetchPastorInfo();
     fetchEngagementStats();
   }, [pastorId]);
 
-  if (!pastorInfo || !engagementStats) {
+  if (!engagementStats) {
     return <div>Loading...</div>;
   }
 
   return (
     <header className="bg-gray-800 text-white p-4">
       <div className="container mx-auto">
-        <h1 className="text-2xl font-bold">{pastorInfo.name}</h1>
+        <h1 className="text-2xl font-bold">{name}</h1>
+        <p className="mt-2">Home state: {state}</p>
         <p className="mt-2">Total Engagements: {engagementStats.totalEngagements}</p>
       </div>
     </header>

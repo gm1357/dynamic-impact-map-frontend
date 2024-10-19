@@ -5,8 +5,14 @@ import {
   Geography,
 } from "react-simple-maps";
 
-const MapChart = () => {
+interface MapChartProps {
+  originState: string;
+  pastorId: string;
+}
+
+const MapChart: React.FC<MapChartProps> = ({ originState, pastorId }) => {
   const [geoData, setGeoData] = useState(null);
+  const [engamentPoints, setEngamentPoints] = useState(null);
 
   useEffect(() => {
     const fetchGeoData = async () => {
@@ -19,13 +25,29 @@ const MapChart = () => {
       }
     };
 
+    const fetchEngagementPoints = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}/impact-map`);
+        const data = await response.json();
+        setEngamentPoints(data);
+      } catch (error) {
+        console.error("Error fetching engagement points:", error);
+      }
+    };
+
     fetchGeoData();
-  }, []);
+    fetchEngagementPoints();
+  }, [pastorId]);
 
   if (!geoData) {
     return <div>Loading map data...</div>;
   }
 
+  if (engamentPoints) {
+    console.log(engamentPoints);
+  }
+  const defaultColor = "#E4E5E6";
+  const originStateColor = "#FF9999";
   return (
     <ComposableMap projection="geoAlbersUsa">
       <Geographies geography={geoData}>
@@ -36,7 +58,7 @@ const MapChart = () => {
               geography={geo}
               style={{
                 default: {
-                  fill: "#E4E5E6",
+                  fill: geo.properties.code === originState ? originStateColor : defaultColor,
                   stroke: "#FFFFFF",
                   strokeWidth: 0.75,
                 },
@@ -57,7 +79,7 @@ const MapChart = () => {
                   alignmentBaseline: "middle",
                 }}
               >
-                {geo.properties.name}
+                {geo.properties.code}
               </text>
             </Geography>
           ))
