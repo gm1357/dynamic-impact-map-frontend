@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   ComposableMap,
   Geographies,
@@ -15,6 +15,7 @@ interface MapChartProps {
   originState: string;
   pastorId: string;
   engagementPerState: Record<string, number>;
+  fetchInterval: number;
 }
 
 interface EngagementPoint {
@@ -30,7 +31,7 @@ const ANIMATION_DURATION = 1000;
 // So we disable the animation for them for now
 const DISABLED_STATES_ANIMATION = ["AK", "HI"];
 
-const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPerState }) => {
+const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPerState, fetchInterval }) => {
   const [geoData, setGeoData] = useState(null);
   const [engagementPoints, setEngagementPoints] = useState<EngagementPoint[] | null>(null);
   const [usaStates, setUsaStates] = useState<{ code: string, name: string, longitude: number, latitude: number }[]>([]);
@@ -55,6 +56,8 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
       setActiveEngagements([]);
     }, longestDelay + ANIMATION_DURATION);
   }, []);
+
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchGeoData = async () => {
@@ -81,7 +84,7 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
       try {
         setActiveEngagements([]);
         const endDate = new Date();
-        const startDate = new Date(endDate.getTime() - 60000); // 1 minute ago
+        const startDate = new Date(endDate.getTime() - fetchInterval);
         const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}/impact-map`);
         url.searchParams.append('startDate', startDate.toISOString());
         url.searchParams.append('endDate', endDate.toISOString());
@@ -99,12 +102,16 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
     fetchUsaStates();
     fetchEngagementPoints();
 
-    // Set up interval for fetching engagement points every minute
-    const intervalId = setInterval(fetchEngagementPoints, 60000);
+    // Set up interval for fetching engagement points
+    intervalRef.current = setInterval(fetchEngagementPoints, fetchInterval);
 
     // Clean up interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [pastorId, handleNewEngagementPoints]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [pastorId, handleNewEngagementPoints, fetchInterval]);
 
   if (!geoData || !engagementPoints || !usaStates) {
     return <div>Loading map data...</div>;

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from "../components/Header";
 import MapChart from "../components/MapChart";
 import styles from "../styles/MapChart.module.css";
+import FetchTimer from "../components/FetchTimer";
 
 interface PastorInfo {
   id: string;
@@ -44,6 +45,8 @@ export default function Home() {
     fetchEngagementStats();
   }, [pastorId]);
 
+  const FETCH_INTERVAL = 60000; // 60 seconds
+
   if (!pastorInfo || !engagementStats) {
     return <div>Loading...</div>;
   }
@@ -60,7 +63,11 @@ export default function Home() {
           originState={pastorInfo.state}
           pastorId={pastorInfo.id}
           engagementPerState={engagementStats.engagementPerState}
+          fetchInterval={FETCH_INTERVAL}
         />
+      </div>
+      <div className={styles.timerWrapper}>
+        <FetchTimer interval={FETCH_INTERVAL} />
       </div>
     </div>
   );

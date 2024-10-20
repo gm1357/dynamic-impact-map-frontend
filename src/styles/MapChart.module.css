@@ -24,3 +24,10 @@
   max-width: 1200px;
   max-height: 800px;
 }
+
+.timerWrapper {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+}
