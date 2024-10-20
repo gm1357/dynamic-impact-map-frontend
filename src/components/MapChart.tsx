@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ComposableMap,
   Geographies,
@@ -22,6 +22,7 @@ interface EngagementPoint {
   state: string;
   count: number;
   timestamp: string;
+  delay: number;
 }
 
 const ANIMATION_DURATION = 1000;
@@ -37,23 +38,23 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
   const [hoveredState, setHoveredState] = useState<string | null>(null);
   const [activeEngagements, setActiveEngagements] = useState<EngagementPoint[]>([]);
 
-  const handleNewEngagementPoints = (data: EngagementPoint[]) => {
+  const handleNewEngagementPoints = useCallback((data: EngagementPoint[]) => {
     if (data.length === 0) return;
 
     const startTime = new Date(data[0].timestamp).getTime();
 
-    data.forEach((point) => {
-      const delay = new Date(point.timestamp).getTime() - startTime;
-      
-      setTimeout(() => {
-        console.log("Setting active engagements", point);
-        setActiveEngagements(prev => [...prev, point]);
-        setTimeout(() => {
-          setActiveEngagements(prev => prev.filter(p => p.id !== point.id));
-        }, ANIMATION_DURATION);
-      }, delay);
-    });
-  };
+    const withDelay: EngagementPoint[] = data.map((point) => ({
+      ...point,
+      delay: new Date(point.timestamp).getTime() - startTime,
+    }));
+    setActiveEngagements(withDelay);
+
+    const longestDelay = withDelay.reduce((max, point) => Math.max(max, point.delay), 0);
+
+    setTimeout(() => {
+      setActiveEngagements([]);
+    }, longestDelay + ANIMATION_DURATION);
+  }, []);
 
   useEffect(() => {
     const fetchGeoData = async () => {
@@ -78,6 +79,7 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
 
     const fetchEngagementPoints = async () => {
       try {
+        setActiveEngagements([]);
         const endDate = new Date();
         const startDate = new Date(endDate.getTime() - 60000); // 1 minute ago
         const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}/impact-map`);
@@ -102,7 +104,7 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
 
     // Clean up interval on component unmount
     return () => clearInterval(intervalId);
-  }, [pastorId]);
+  }, [pastorId, handleNewEngagementPoints]);
 
   if (!geoData || !engagementPoints || !usaStates) {
     return <div>Loading map data...</div>;
@@ -149,7 +151,7 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
           }
         </Geographies>
         
-        {/* Lines and AnimatedPoints */}
+        {/* Lines */}
         {originStateData && engagementPoints && engagementPoints.map((point, index) => {
           const stateData = usaStates.find(state => state.code === point.state);
           if (!stateData) return null;
@@ -173,27 +175,25 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
                 strokeOpacity={0.7}
                 strokeDasharray="10, 5"
               />
-              {activeEngagements.includes(point) && !DISABLED_STATES_ANIMATION.includes(point.state) && (
-                <AnimatedPoint
-                  to={[originStateData.longitude, originStateData.latitude]}
-                  from={[stateData.longitude, stateData.latitude]}
-                  duration={ANIMATION_DURATION}
-                />
-              )}
             </React.Fragment>
           );
         })}
+        
+        {/* Animated points */}
+        {originStateData && activeEngagements && activeEngagements.map((point) => {
+          if (DISABLED_STATES_ANIMATION.includes(point.state)) return null;
+          return (
+            <AnimatedPoint
+              key={point.id}
+              from={[usaStates.find(state => state.code === point.state)!.longitude, usaStates.find(state => state.code === point.state)!.latitude]}
+              to={[originStateData.longitude, originStateData.latitude]}
+              duration={ANIMATION_DURATION}
+              id={point.id}
+              delay={point.delay}
+            />
+          );
+        })}
 
-        {/* Lines */}
-        {originStateData && hoveredState && <Line
-          from={[originStateData.longitude, originStateData.latitude]}
-          to={[usaStates.find(state => state.code === hoveredState)!.longitude, usaStates.find(state => state.code === hoveredState)!.latitude]}
-          stroke="#FF5533"
-          strokeWidth={2}
-          strokeLinecap="square"
-          strokeOpacity={0.7}
-          strokeDasharray="10, 5"
-        />}
         {/* Markers */}
         {originStateData && (
           <Marker coordinates={[originStateData.longitude, originStateData.latitude]}>
