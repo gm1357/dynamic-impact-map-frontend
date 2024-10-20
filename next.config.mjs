@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  // Disabled strict mode to prevent useEffect from running twice in dev
+  reactStrictMode: false,
 };
 
 export default nextConfig;

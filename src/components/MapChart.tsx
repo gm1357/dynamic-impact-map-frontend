@@ -4,10 +4,12 @@ import {
   Geographies,
   Geography,
   Marker,
+  Line	
 } from "react-simple-maps";
 import StateTooltip from "./StateTooltip";
 import OriginMarker from "./OriginMarker";
 import styles from "../styles/MapChart.module.css";
+import AnimatedPoint from './AnimatedPoint';
 
 interface MapChartProps {
   originState: string;
@@ -15,12 +17,43 @@ interface MapChartProps {
   engagementPerState: Record<string, number>;
 }
 
+interface EngagementPoint {
+  id: string;
+  state: string;
+  count: number;
+  timestamp: string;
+}
+
+const ANIMATION_DURATION = 1000;
+// Because of how this states are displayed on this projection, when trying to do the animation for them, it breaks
+// So we disable the animation for them for now
+const DISABLED_STATES_ANIMATION = ["AK", "HI"];
+
 const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPerState }) => {
   const [geoData, setGeoData] = useState(null);
-  const [engagementPoints, setEngagementPoints] = useState(null);
+  const [engagementPoints, setEngagementPoints] = useState<EngagementPoint[] | null>(null);
   const [usaStates, setUsaStates] = useState<{ code: string, name: string, longitude: number, latitude: number }[]>([]);
 
   const [hoveredState, setHoveredState] = useState<string | null>(null);
+  const [activeEngagements, setActiveEngagements] = useState<EngagementPoint[]>([]);
+
+  const handleNewEngagementPoints = (data: EngagementPoint[]) => {
+    if (data.length === 0) return;
+
+    const startTime = new Date(data[0].timestamp).getTime();
+
+    data.forEach((point) => {
+      const delay = new Date(point.timestamp).getTime() - startTime;
+      
+      setTimeout(() => {
+        console.log("Setting active engagements", point);
+        setActiveEngagements(prev => [...prev, point]);
+        setTimeout(() => {
+          setActiveEngagements(prev => prev.filter(p => p.id !== point.id));
+        }, ANIMATION_DURATION);
+      }, delay);
+    });
+  };
 
   useEffect(() => {
     const fetchGeoData = async () => {
@@ -52,9 +85,9 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
         url.searchParams.append('endDate', endDate.toISOString());
 
         const response = await fetch(url.toString());
-        const data = await response.json();
+        const data: EngagementPoint[] = await response.json();
         setEngagementPoints(data);
-        console.log(data);
+        handleNewEngagementPoints(data);
       } catch (error) {
         console.error("Error fetching engagement points:", error);
       }
@@ -115,6 +148,53 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
             })
           }
         </Geographies>
+        
+        {/* Lines and AnimatedPoints */}
+        {originStateData && engagementPoints && engagementPoints.map((point, index) => {
+          const stateData = usaStates.find(state => state.code === point.state);
+          if (!stateData) return null;
+
+          // generate up to 10 points between the origin and the state
+          const points: [number, number][] = [];
+          for (let i = 0; i < 10; i++) {
+            points.push([
+              originStateData.longitude + (stateData.longitude - originStateData.longitude) * i / 10,
+              originStateData.latitude + (stateData.latitude - originStateData.latitude) * i / 10
+            ]);
+          }
+          
+          return (
+            <React.Fragment key={index}>
+              <Line
+                coordinates={points}
+                stroke="#FF5533"
+                strokeWidth={2}
+                strokeLinecap="square"
+                strokeOpacity={0.7}
+                strokeDasharray="10, 5"
+              />
+              {activeEngagements.includes(point) && !DISABLED_STATES_ANIMATION.includes(point.state) && (
+                <AnimatedPoint
+                  to={[originStateData.longitude, originStateData.latitude]}
+                  from={[stateData.longitude, stateData.latitude]}
+                  duration={ANIMATION_DURATION}
+                />
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {/* Lines */}
+        {originStateData && hoveredState && <Line
+          from={[originStateData.longitude, originStateData.latitude]}
+          to={[usaStates.find(state => state.code === hoveredState)!.longitude, usaStates.find(state => state.code === hoveredState)!.latitude]}
+          stroke="#FF5533"
+          strokeWidth={2}
+          strokeLinecap="square"
+          strokeOpacity={0.7}
+          strokeDasharray="10, 5"
+        />}
+        {/* Markers */}
         {originStateData && (
           <Marker coordinates={[originStateData.longitude, originStateData.latitude]}>
             <g transform="translate(-20, -58)">
