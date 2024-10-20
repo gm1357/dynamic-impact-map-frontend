@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from "../components/Header";
 import MapChart from "../components/MapChart";
+import styles from "../styles/MapChart.module.css";
 
 interface PastorInfo {
   id: string;
@@ -48,17 +49,19 @@ export default function Home() {
   }
 
   return (
-    <div>
+    <div className={styles.pageContainer}>
       <Header
         name={pastorInfo.name}
         state={pastorInfo.state}
         totalEngagements={engagementStats.totalEngagements}
       />
-      <MapChart
-        originState={pastorInfo.state}
-        pastorId={pastorInfo.id}
-        engagementPerState={engagementStats.engagementPerState}
-      />
+      <div className={styles.mapWrapper}>
+        <MapChart
+          originState={pastorInfo.state}
+          pastorId={pastorInfo.id}
+          engagementPerState={engagementStats.engagementPerState}
+        />
+      </div>
     </div>
   );
 }
