@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from "../components/Header";
 import MapChart from "../components/MapChart";
 import styles from "../styles/MapChart.module.css";
@@ -15,37 +15,43 @@ interface EngagementStats {
   engagementPerState: Record<string, number>;
 }
 
+const FETCH_INTERVAL = 60000; // 60 seconds
+
 export default function Home() {
   const [pastorInfo, setPastorInfo] = useState<PastorInfo | null>(null);
   const [engagementStats, setEngagementStats] = useState<EngagementStats | null>(null);
   const pastorId = process.env.NEXT_PUBLIC_PASTOR_ID || "1";
 
-  useEffect(() => {
-    const fetchPastorInfo = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}`);
-        const data = await response.json();
-        setPastorInfo(data);
-      } catch (error) {
-        console.error('Error fetching pastor info:', error);
-      }
-    };
-
-    const fetchEngagementStats = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}/engagement-stats`);
-        const data = await response.json();
-        setEngagementStats(data);
-      } catch (error) {
-        console.error('Error fetching engagement stats:', error);
-      }
-    };
-
-    fetchPastorInfo();
-    fetchEngagementStats();
+  const fetchPastorInfo = useCallback(async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}`);
+      const data = await response.json();
+      setPastorInfo(data);
+    } catch (error) {
+      console.error('Error fetching pastor info:', error);
+    }
   }, [pastorId]);
 
-  const FETCH_INTERVAL = 60000; // 60 seconds
+  const fetchEngagementStats = useCallback(async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/pastors/${pastorId}/engagement-stats`);
+      const data = await response.json();
+      setEngagementStats(data);
+    } catch (error) {
+      console.error('Error fetching engagement stats:', error);
+    }
+  }, [pastorId]);
+
+  useEffect(() => {
+    fetchPastorInfo();
+    fetchEngagementStats();
+
+    const timer = setInterval(() => {
+      fetchEngagementStats();
+    }, FETCH_INTERVAL);
+
+    return () => clearInterval(timer);
+  }, [fetchPastorInfo, fetchEngagementStats]);
 
   if (!pastorInfo || !engagementStats) {
     return <div>Loading...</div>;

@@ -5,16 +5,16 @@ interface AnimatedPointProps {
   from: [number, number];
   to: [number, number];
   duration: number;
-  id: string;
   delay: number;
 }
 
-const AnimatedPoint: React.FC<AnimatedPointProps> = ({ from, to, duration, id, delay }) => {
-  console.log("Creating AnimatedPoint", id);
+const AnimatedPoint: React.FC<AnimatedPointProps> = ({ from, to, duration, delay }) => {
   const [position, setPosition] = useState(from);
+  const [opacity, setOpacity] = useState(0);
 
   useEffect(() => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
+      setOpacity(1);
       const startTime = Date.now();
       
       const animate = () => {
@@ -33,11 +33,13 @@ const AnimatedPoint: React.FC<AnimatedPointProps> = ({ from, to, duration, id, d
 
       animate();
     }, delay);
+
+    return () => clearTimeout(timer);
   }, [from, to, duration, delay]);
 
   return (
     <Marker coordinates={position}>
-      <circle r={7} fill="#FF5533" />
+      <circle r={7} fill="#FF5533" opacity={opacity} />
     </Marker>
   );
 };

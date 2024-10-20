@@ -195,7 +195,6 @@ const MapChart: React.FC<MapChartProps> = ({ originState, pastorId, engagementPe
               from={[usaStates.find(state => state.code === point.state)!.longitude, usaStates.find(state => state.code === point.state)!.latitude]}
               to={[originStateData.longitude, originStateData.latitude]}
               duration={ANIMATION_DURATION}
-              id={point.id}
               delay={point.delay}
             />
           );
